@@ -1,0 +1,17 @@
+{
+  "name": "sillage-cli",
+  "version": "1.0.0",
+  "description": "Retrouvez votre attention. Un bloqueur de réseaux sociaux réversible.",
+  "type": "module",
+  "bin": { "sillage": "bin/sillage.js" },
+  "files": ["bin", "src", "README.md", "LICENSE"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node bin/sillage.js",
+    "demo": "node bin/sillage.js --demo",
+    "test": "node --test",
+    "check": "node --check bin/sillage.js && node --check src/hosts.js && node --check src/ui.js && node --check src/authorization.js"
+  },
+  "license": "MIT",
+  "dependencies": { "@clack/prompts": "1.8.1", "picocolors": "1.1.1" }
+}
