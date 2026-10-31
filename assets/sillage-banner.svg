@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="330" viewBox="0 0 1200 330" role="img" aria-labelledby="title desc">
+  <title id="title">Sillage — reprenez le fil</title>
+  <desc id="desc">Bloquez le bruit. Gardez votre cap. Un outil de concentration en ligne de commande.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#160d20"/>
+      <stop offset="1" stop-color="#281434"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#45ead0"/>
+      <stop offset="1" stop-color="#a7fff0"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop stop-color="#37cbb7" stop-opacity=".15"/>
+      <stop offset="1" stop-color="#37cbb7" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="330" rx="20" fill="url(#bg)"/>
+  <circle cx="1010" cy="120" r="270" fill="url(#glow)"/>
+  <path d="M0 278H1200" stroke="#42d9c3" stroke-opacity=".22"/>
+  <g transform="translate(72 75)" fill="none" stroke="url(#accent)" stroke-linecap="round" stroke-width="5">
+    <path d="M0 26V7h56M0 26v47h56"/>
+    <path d="M21 26h34M21 53h34" stroke-opacity=".55"/>
+    <circle cx="0" cy="26" r="4" fill="#45ead0" stroke="none"/>
+  </g>
+  <text x="158" y="116" fill="#f7f2fb" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="48" font-weight="700" letter-spacing="8">SILLAGE</text>
+  <text x="160" y="157" fill="#b8a9c4" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17" letter-spacing="3">VOTRE ESPACE. VOTRE RYTHME.</text>
+  <text x="72" y="228" fill="#f7f2fb" font-family="ui-sans-serif, system-ui, sans-serif" font-size="31" font-weight="650">Bloquez le bruit.</text>
+  <text x="72" y="268" fill="#45ead0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="31" font-weight="650">Gardez votre cap.</text>
+  <g transform="translate(826 94)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+    <rect width="296" height="142" rx="14" fill="#100a18" fill-opacity=".78" stroke="#b08bc7" stroke-opacity=".3"/>
+    <circle cx="20" cy="20" r="4" fill="#ff7b9a"/><circle cx="35" cy="20" r="4" fill="#ffd479"/><circle cx="50" cy="20" r="4" fill="#45ead0"/>
+    <text x="20" y="57" fill="#aa91bb" font-size="13">sillage / focus</text>
+    <text x="20" y="88" fill="#45ead0" font-size="14">● SESSION ACTIVE</text>
+    <text x="20" y="116" fill="#e7ddeb" font-size="13">facebook · instagram · youtube</text>
+  </g>
+  <text x="72" y="310" fill="#aa91bb" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" letter-spacing="2">CLI · LINUX · macOS · RÉVERSIBLE</text>
+</svg>
