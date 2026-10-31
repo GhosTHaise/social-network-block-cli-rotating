@@ -17,6 +17,22 @@ Mettez Facebook, Instagram, YouTube et d’autres distractions en pause, directe
 
 <br>
 
+## Sillage en action
+
+La capture montre le tableau de bord. Le GIF déroule le choix et la confirmation en mode démo, sans modifier votre réseau.
+
+<div align="center">
+
+[![Capture du tableau de bord Sillage en mode démo](assets/sillage-cli.png)](assets/sillage-cli.png)
+
+<br>
+
+<img src="assets/sillage-demo.gif" alt="Démonstration animée : sélection des réseaux, confirmation, puis session de démonstration" width="800">
+
+</div>
+
+<br>
+
 ```text
   S I L L A G E   /   FOCUS
   ─────────────────────────────────────────────
