@@ -1,6 +1,6 @@
 {
   "name": "sillage-cli",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Retrouvez votre attention. Un bloqueur de réseaux sociaux réversible.",
   "type": "module",
   "bin": { "sillage": "bin/sillage.js" },

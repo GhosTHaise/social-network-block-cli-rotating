@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { constants } from 'node:fs';
 import { requestAuthorization } from '../src/authorization.js';
 import { Hosts } from '../src/hosts.js';
-import { services, defaults, selectServices } from '../src/catalog.js';
+import { services, defaults, selectServices, normalizeSite } from '../src/catalog.js';
 import { banner, showStatus, interactive, friendlyError } from '../src/ui.js';
 
 const help = `
@@ -16,13 +16,18 @@ const help = `
   sillage                         Interface interactive
   sillage block                   Facebook, Instagram, YouTube
   sillage block facebook youtube  Sélection explicite
+  sillage block --url https://example.com/page
+                                  Ajouter un domaine personnalisé
+  sillage block facebook --url https://example.com
+                                  Services et domaine ensemble
   sillage block --all              Tout le catalogue
   sillage unblock                 Retirer uniquement notre bloc
   sillage status                  Afficher l’état en lecture seule
   sillage list                    Voir les réseaux disponibles
 
+  --url URL       Ajouter un site personnalisé (option répétable)
   --demo          Utiliser un hosts temporaire (sans sudo)
-  --hosts CHEMIN  Utiliser un fichier hosts explicite (tests, bac à sable)
+  --hosts CHEMIN  Utiliser un fichier hosts explicite (bac à sable)
   --help          Afficher cette aide
   --version       Afficher la version
 
@@ -33,20 +38,22 @@ const help = `
 
 async function main() {
   const { values, positionals } = parseArgs({ allowPositionals: true, options: {
-    all: { type: 'boolean' }, demo: { type: 'boolean' }, hosts: { type: 'string' },
+    all: { type: 'boolean' }, demo: { type: 'boolean' }, hosts: { type: 'string' }, url: { type: 'string', multiple: true },
     help: { type: 'boolean', short: 'h' }, version: { type: 'boolean', short: 'v' }
   } });
   if (values.help) return console.log(help);
-  if (values.version) return console.log('1.0.0');
+  if (values.version) return console.log('1.1.0');
   const [command, ...ids] = positionals;
+  const urls = (values.url || []).map(normalizeSite);
   if (command && !['block', 'unblock', 'status', 'list'].includes(command)) throw new Error('Commande inconnue. Consultez « sillage --help ».');
   if (ids.length && command !== 'block') throw new Error('Seule la commande block accepte une liste de réseaux.');
-  if (values.all && (command !== 'block' || ids.length)) throw new Error('Utilisez « sillage block --all » sans sélection supplémentaire.');
+  if (values.all && (command !== 'block' || ids.length || urls.length)) throw new Error('Utilisez « sillage block --all » sans sélection supplémentaire.');
+  if (urls.length && command !== 'block') throw new Error('--url est disponible uniquement avec « block ».');
   if (values.demo && values.hosts) throw new Error('--demo et --hosts sont incompatibles.');
   if (command === 'list') return console.log(services.map(item => `  ${item.id.padEnd(12)} ${item.name}${defaults.includes(item.id) ? '  · par défaut' : ''}`).join('\n'));
   if (!['linux', 'darwin'].includes(process.platform)) throw new Error('Cette version prend en charge Linux et macOS.');
   if (!command && (!process.stdin.isTTY || !process.stdout.isTTY)) throw new Error('Terminal interactif requis. Utilisez une commande explicite ; voir --help.');
-  if (command === 'block') selectServices(values.all ? services.map(item => item.id) : ids.length ? ids : defaults);
+  if (command === 'block' && (values.all || ids.length || !urls.length)) selectServices(values.all ? services.map(item => item.id) : ids.length ? ids : defaults);
   if (!values.demo && !values.hosts && process.getuid() !== 0) {
     let needsAuthorization = command !== 'status';
     if (!needsAuthorization) {
@@ -70,10 +77,10 @@ async function main() {
   banner(values.demo);
   if (command === 'status') return showStatus(await hosts.status());
   const result = command === 'block'
-    ? await hosts.block(values.all ? services.map(item => item.id) : ids.length ? ids : defaults)
+    ? await hosts.block(values.all ? services.map(item => item.id) : ids.length ? ids : urls.length ? [] : defaults, urls)
     : await hosts.unblock();
   console.log(command === 'block'
-    ? `  ● ${result.ids.length} réseaux en pause · ${result.domains} domaines (IPv4 + IPv6).`
+    ? `  ● ${result.ids.length} services · ${result.customDomains.length} sites personnalisés · ${result.domains} domaines bloqués (IPv4 + IPv6).`
     : result.changed ? '  ○ Bloc Sillage retiré. Autres entrées conservées.' : '  ○ Aucun bloc à retirer. Journal vérifié.');
   if (result.backup) console.log(`  Sauvegarde : ${result.backup}`);
   console.log('  Les caches et connexions existantes peuvent retarder l’effet.');

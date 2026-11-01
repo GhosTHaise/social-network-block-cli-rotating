@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 export const services = [
   { id: 'facebook', name: 'Facebook', hint: 'fil, vidéos et version mobile', domains: ['facebook.com', 'www.facebook.com', 'm.facebook.com', 'web.facebook.com', 'fb.watch'] },
   { id: 'instagram', name: 'Instagram', hint: 'fil, reels et messages web', domains: ['instagram.com', 'www.instagram.com', 'i.instagram.com'] },
@@ -22,4 +24,17 @@ export function selectServices(ids) {
     if (!service) throw new Error(`Réseau inconnu : ${id}. Consultez « sillage list ». `);
     return service;
   });
+}
+export function normalizeSite(input) {
+  const value = input.trim();
+  if (!value || /[\s*]/.test(value)) throw new Error('Saisissez un domaine ou une URL HTTP(S) valide.');
+  let url;
+  try { url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(value) ? value : `https://${value}`); }
+  catch { throw new Error('URL invalide. Exemple : https://example.com/page'); }
+  const domain = url.hostname.toLowerCase().replace(/\.$/, '');
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || !domain.includes('.') || isIP(domain)
+      || domain.length > 253 || domain.split('.').some(label => !label || label.length > 63 || !/^[a-z\d](?:[a-z\d-]*[a-z\d])?$/.test(label))) {
+    throw new Error('URL non prise en charge. Utilisez un domaine public en HTTP ou HTTPS.');
+  }
+  return domain;
 }

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { selectServices } from './catalog.js';
+import { normalizeSite, selectServices } from './catalog.js';
 
 const exec = promisify(execFile);
 const marker = '# sillage:';
@@ -70,11 +70,13 @@ export class Hosts {
     const content = await fs.readFile(this.file);
     const text = content.toString('utf8');
     if (!text.includes(marker)) return { active: false, ids: [], file: this.file, backupDir: this.dir };
-    const headers = [...text.matchAll(/^# sillage:begin ([a-f0-9-]{36}) ([a-z,]+)\r?$/gm)];
+    const headers = [...text.matchAll(/^# sillage:begin ([a-f0-9-]{36}) ([a-z,-]+)(?: ([A-Za-z0-9_.,-]+))?\r?$/gm)];
     if (headers.length !== 1 || text.split(marker).length !== 3 || !text.includes(`# sillage:end ${headers[0][1]}`)) throw conflict();
-    const ids = headers[0][2].split(',');
-    selectServices(ids);
-    return { active: true, ids, file: this.file, backupDir: this.dir };
+    const ids = headers[0][2] === '-' ? [] : headers[0][2].split(',');
+    if (ids.length) selectServices(ids);
+    const customDomains = headers[0][3] ? headers[0][3].split(',').map(domain => normalizeSite(domain)) : [];
+    if (!ids.length && !customDomains.length) throw conflict();
+    return { active: true, ids, customDomains, file: this.file, backupDir: this.dir };
   }
 
   async locked(action) {
@@ -94,8 +96,10 @@ export class Hosts {
     finally { await fs.rmdir(lock); }
   }
 
-  async block(ids) {
-    const selection = selectServices(ids);
+  async block(ids, sites = []) {
+    const selection = ids.length ? selectServices(ids) : [];
+    const customDomains = [...new Set(sites.map(normalizeSite))];
+    if (!selection.length && !customDomains.length) throw new Error('Sélectionnez au moins un réseau ou domaine.');
     return this.locked(async () => {
       const before = await fs.readFile(this.file);
       const state = await optional(this.journal);
@@ -104,20 +108,22 @@ export class Hosts {
       }
       const id = randomUUID();
       const eol = before.includes(Buffer.from('\r\n')) ? '\r\n' : '\n';
-      const domains = [...new Set(selection.flatMap(item => item.domains))];
+      const domains = [...new Set([...selection.flatMap(item => item.domains), ...customDomains])];
       const existing = before.toString('utf8').split(/\r?\n/).flatMap(line => line.split('#')[0].trim().split(/\s+/).slice(1));
       const overlaps = domains.filter(domain => existing.some(host => host.toLowerCase().replace(/\.$/, '') === domain));
       if (overlaps.length) throw new Error(`Entrées hosts déjà présentes pour : ${overlaps.join(', ')}. Résolvez ce conflit manuellement ; vos entrées ne seront pas remplacées.`);
       const lines = domains.flatMap(domain => [`0.0.0.0 ${domain}`, `:: ${domain}`]);
       const prefix = before.length && before.at(-1) !== 10 ? eol : '';
-      const block = Buffer.from(`${prefix}# sillage:begin ${id} ${selection.map(item => item.id).join(',')}${eol}${lines.join(eol)}${eol}# sillage:end ${id}${eol}`);
+      const markerIds = selection.map(item => item.id).join(',') || '-';
+      const markerSites = customDomains.length ? ` ${customDomains.join(',')}` : '';
+      const block = Buffer.from(`${prefix}# sillage:begin ${id} ${markerIds}${markerSites}${eol}${lines.join(eol)}${eol}# sillage:end ${id}${eol}`);
       const backup = path.join(this.dir, `${id}.hosts.bak`);
       const originalMode = (await fs.stat(this.file)).mode & 0o777;
       const readableMode = originalMode | 0o444;
       await saveNew(backup, before);
       await saveNew(this.journal, JSON.stringify({ version: 1, file: this.file, originalMode, readableMode, backup, hash: digest(before), blockHash: digest(block), block: block.toString('base64') }));
       await replace(this.file, before, Buffer.concat([before, block]), readableMode);
-      return { ids: selection.map(item => item.id), domains: domains.length, backup };
+      return { ids: selection.map(item => item.id), customDomains, domains: domains.length, backup };
     });
   }
 
