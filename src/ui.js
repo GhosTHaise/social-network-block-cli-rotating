@@ -1,29 +1,20 @@
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
-import { services, defaults, selectServices } from './catalog.js';
+import { services, defaults, selectServices, normalizeSite } from './catalog.js';
 
-const names = ids => selectServices(ids).map(item => item.name).join(', ');
-const checked = value => {
-  if (p.isCancel(value)) { p.cancel('Annulé. Aucune nouvelle modification.'); return null; }
-  return value;
-};
+const names = ids => ids.length ? selectServices(ids).map(item => item.name).join(' · ') : 'Sites personnalisés';
 
 export function banner(demo = false) {
-  const width = Math.max(24, Math.min(62, (process.stdout.columns || 80) - 4));
   console.log();
-  console.log(`  ${pc.cyan('━'.repeat(width))}`);
-  console.log(`  ${pc.bold('S I L L A G E')}  ${pc.cyan(' / CONCENTRATION')}`);
-  console.log('  Bloquez les distractions. Concentrez-vous.');
-  console.log(`  ${pc.cyan('━'.repeat(width))}`);
+  console.log(`  ${pc.bold(pc.cyan('SILLAGE'))}  ${pc.dim('/ FOCUS')}`);
+  console.log(`  Bloquez le bruit. Gardez votre cap.${demo ? pc.yellow('  ·  DÉMO') : ''}`);
   console.log();
-  if (demo) console.log(`  ${pc.bold('MODE DÉMO')} · aucun blocage réel\n`);
-
 }
 
 export function showStatus(state) {
   p.log.info(state.active
-    ? `${pc.green('CONCENTRATION')}\n${names(state.ids)}\n${pc.dim('Entrées présentes dans hosts · sillage unblock pour les retirer')}`
-    : `${pc.bold('BLOCAGE DÉSACTIVÉ')}\nLes réseaux sociaux restent accessibles.`);
+    ? `${pc.green('● SESSION ACTIVE')}\n${names(state.ids)}${state.customDomains?.length ? ` · ${state.customDomains.join(', ')}` : ''}`
+    : `${pc.dim('○ BLOCAGE DÉSACTIVÉ')}\nLes sites restent accessibles.`);
 }
 
 export async function interactive(hosts, demo) {
@@ -32,104 +23,161 @@ export async function interactive(hosts, demo) {
   const fs = await import('node:fs/promises');
   let state = await hosts.status();
   let selected = new Set(state.active ? state.ids : defaults);
-  let cursor = 0, pending = null, busy = false, details = false;
-  let message = 'Choisissez vos réseaux, puis appuyez sur B pour bloquer.';
-  let diagnostic = 'Non vérifié · V pour tester la résolution système';
+  let sites = new Set(state.active ? state.customDomains : []);
+  let cursor = 0, pending = null, busy = false, details = false, input = null;
+  let message = 'Sélectionnez vos sites, puis confirmez le blocage.';
+  let diagnostic = state.active ? 'Vérifiez la résolution avec V' : 'Votre sélection reste modifiable jusqu’à confirmation.';
   const output = process.stdout;
-  const clean = value => String(value).replace(/[\x00-\x1f\x7f]/g, ' ');
+  const rows = () => [
+    ...services.map(item => ({ id: item.id, label: item.name, checked: selected.has(item.id), type: 'service' })),
+    ...[...sites].map(domain => ({ id: domain, label: domain, checked: true, type: 'site' })),
+    { id: 'add', label: 'Ajouter un site…', checked: false, type: 'add' }
+  ];
+
   function render() {
-    const width = Math.max(20, Math.min(96, (output.columns || 80) - 4));
-    const rows = output.rows || 30;
-    const line = text => '  ' + clean(text).slice(0, width);
-    const visible = Math.max(1, Math.min(services.length, rows - 15));
-    const offset = Math.max(0, Math.min(cursor - visible + 1, services.length - visible));
-    const lines = [
-      '', pc.bold(pc.cyan(line('S I L L A G E   /   FOCUS'))),
-      line(demo ? 'DÉMONSTRATION · aucun blocage réel' : 'Votre espace de concentration'),
-      pc.cyan(line('─'.repeat(width))), '',
-      pc.bold(line(state.active ? (busy ? 'VÉRIFICATION EN COURS' : diagnostic.startsWith('RÉSOLUTION SYSTÈME BLOQUÉE') ? 'RÉSOLUTION BLOQUÉE' : 'SESSION ACTIVE · vérification requise') : 'BLOCAGE DÉSACTIVÉ')),
+    const width = Math.max(42, Math.min(112, (output.columns || 80) - 4));
+    const screenRows = output.rows || 30;
+    const line = text => {
+      let cells = 0;
+      return `  ${String(text).replace(/\x1b\[[0-9;]*m|[\x00-\x1a\x1c-\x1f\x7f]|./gu, token => {
+        if (token.startsWith('\x1b')) return token;
+        if (token.charCodeAt(0) < 32) return ' ';
+        return cells++ < width - 2 ? token : '';
+      })}`;
+    };
+    const items = rows();
+    cursor = Math.min(cursor, items.length - 1);
+    const visible = Math.max(3, Math.min(items.length, screenRows - 17));
+    const offset = Math.max(0, Math.min(cursor - visible + 1, items.length - visible));
+    const count = selected.size + sites.size;
+    const inputPreview = input === null ? '' : input.length > width - 16 ? `…${input.slice(-(width - 17))}` : input || 'https://exemple.com/page';
+    const actionHint = input !== null ? 'Entrée valider · Échap annuler' : pending ? 'O / Entrée confirmer · N / Échap annuler' : details ? `Fichier : ${state.file}` : state.active ? 'U débloquer · V vérifier · D détails · Q quitter' : '↑↓ choisir · Espace cocher · Entrée / B bloquer · I ajouter une URL';
+    const secondaryHint = input !== null ? 'Seul le domaine exact sera bloqué ; le chemin est ignoré.' : pending ? 'Vérifiez l’action avant de confirmer.' : details ? `Sauvegardes : ${state.backupDir}` : state.active ? 'Sélection verrouillée pendant la session.' : 'A catalogue · U débloquer · V vérifier · D détails · Q quitter';
+    const status = state.active
+      ? diagnostic.startsWith('RÉSOLUTION BLOQUÉE') ? '● SESSION BLOQUÉE' : '● SESSION ACTIVE · diagnostic requis'
+      : '○ PRÊT À BLOQUER';
+    const outputLines = [
+      '',
+      line(`${pc.bold(pc.cyan('SILLAGE'))}  ${pc.dim('/ FOCUS')}   ${demo ? pc.yellow('DÉMO') : pc.dim('CONCENTRATION')}`),
+      line('Bloquez le bruit. Gardez votre cap.'),
+      pc.cyan(line('─'.repeat(width))),
+      line(`${pc.bold(status)}   ${pc.dim(`· ${count} sélectionné(s)`)}`),
       line(diagnostic), '',
-      line(state.active ? 'RÉSEAUX DE LA SESSION' : 'RÉSEAUX À BLOQUER · espace pour sélectionner'),
-      ...services.slice(offset, offset + visible).map((item, i) => {
-        const text = line((i + offset === cursor ? '› ' : '  ') + (selected.has(item.id) ? '[x] ' : '[ ] ') + item.name);
-        return i + offset === cursor ? pc.bold(pc.cyan(text)) : text;
+      line(state.active ? 'SITES DE LA SESSION' : 'SITES À BLOQUER'),
+      ...items.slice(offset, offset + visible).map((item, index) => {
+        const actual = offset + index;
+        const prefix = actual === cursor ? '›' : ' ';
+        const checkbox = item.type === 'add' ? '+' : item.checked ? '✓' : '○';
+        const label = item.type === 'add' ? item.label : `${checkbox}  ${item.label}`;
+        const row = line(`${prefix} ${label}${item.type === 'service' && item.checked ? '  ·  inclus' : ''}`);
+        return actual === cursor ? pc.bold(pc.cyan(row)) : item.type === 'add' ? pc.dim(row) : row;
       }),
-      '', pc.cyan(line('─'.repeat(width))),
-      line(pending ? pending : busy ? 'Opération en cours…' : message),
-      line(pending ? 'O / Entrée : confirmer · N / Échap : annuler' : details ? 'Fichier : ' + state.file : state.active ? 'Sélection verrouillée pendant le blocage · U pour débloquer' : '↑↓ choisir · espace cocher · A tout · Entrée bloquer'),
-      line(details ? 'Sauvegardes : ' + state.backupDir : 'V vérifier · R réparer la lecture · D détails · Q quitter')
+      '',
+      pc.cyan(line('─'.repeat(width))),
+      line(input !== null ? `SITE › ${inputPreview}▏` : pending ? pending.label : busy ? 'Vérification en cours…' : message),
+      line(actionHint),
+      line(secondaryHint)
     ];
-    output.write('\x1b[H\x1b[2J' + lines.slice(0, rows - 1).join('\n'));
+    output.write(`\x1b[H\x1b[2J${outputLines.slice(0, screenRows - 1).join('\n')}`);
   }
+
   async function verify() {
-    if (!state.active) { diagnostic = 'Aucun blocage Sillage actif. Les cases sont votre prochaine sélection.'; message = 'Entrée : bloquer la sélection · U : débloquer une session'; return; }
-    if (demo) { diagnostic = 'Démo : résolution réseau non modifiée.'; return; }
+    if (!state.active) { diagnostic = 'Aucun bloc actif · choisissez un site et appuyez sur Entrée.'; return; }
+    if (demo) { diagnostic = 'Mode démo · aucune résolution système modifiée.'; return; }
     const mode = (await fs.stat(hosts.file)).mode & 0o777;
     if ((mode & 0o444) !== 0o444) {
-      diagnostic = 'HOSTS ILLISIBLE pour certains utilisateurs · R pour réparer';
-      message = 'La réparation autorise les utilisateurs locaux à lire hosts.';
+      diagnostic = 'Fichier hosts non lisible · le blocage peut être ignoré.';
+      message = 'U pour débloquer, puis Entrée pour réactiver avec les permissions requises.';
       return;
     }
-    const domains = selectServices(state.active ? state.ids : [...selected]).flatMap(s => s.domains);
-    const checks = await Promise.all(domains.map(async domain => {
+    const domains = [...(state.ids.length ? selectServices(state.ids).flatMap(item => item.domains) : []), ...state.customDomains];
+    const results = await Promise.all(domains.map(async domain => {
       let timer;
       try {
         const addresses = await Promise.race([
           lookup(domain, { all: true }),
           new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('délai dépassé')), 3000); })
         ]);
-        return addresses.length && addresses.every(a => ['0.0.0.0', '::'].includes(a.address)) ? null : domain;
-      } catch { return domain + ' (indéterminé)'; }
+        return addresses.length && addresses.every(address => ['0.0.0.0', '::'].includes(address.address)) ? null : domain;
+      } catch { return `${domain} · DNS indéterminé`; }
       finally { clearTimeout(timer); }
     }));
-    const failed = checks.filter(Boolean);
-    diagnostic = failed.length ? 'À VÉRIFIER : ' + failed[0] : 'RÉSOLUTION SYSTÈME BLOQUÉE · ' + domains.length + ' domaines';
-    message = 'Le navigateur peut garder ses connexions : fermez-le complètement.';
+    const failed = results.find(Boolean);
+    diagnostic = failed ? `À VÉRIFIER · ${failed}` : `RÉSOLUTION BLOQUÉE · ${domains.length} domaines vérifiés`;
+    message = failed ? 'Vérifiez le DNS sécurisé, le VPN ou le proxy du navigateur.' : 'Fermez le navigateur pour couper les connexions déjà ouvertes.';
   }
+
   emitKeypressEvents(process.stdin);
   const wasRaw = process.stdin.isRaw;
   process.stdin.setRawMode(true);
+  process.stdin.resume();
   output.write('\x1b[?1049h\x1b[?25l');
   try {
     await verify();
-    if (!demo && state.active && diagnostic.startsWith('HOSTS ILLISIBLE')) {
-      pending = 'Réparer le blocage : rendre hosts lisible par les utilisateurs locaux ?';
-    }
+    if (!demo && state.active && diagnostic.startsWith('Fichier hosts non lisible')) pending = { type: 'repair', label: 'Rendre le fichier hosts lisible pour les utilisateurs locaux ?' };
     await new Promise(resolve => {
       const quit = () => { process.stdin.off('keypress', keypress); output.off('resize', render); resolve(); };
       const keypress = async (text, key = {}) => {
-        text = text?.toLowerCase();
+        text = text?.toLowerCase() ?? '';
         if (busy) return;
-        if (key.ctrl && key.name === 'c' || text === 'q') return quit();
+        if (key.ctrl && key.name === 'c') return quit();
+        if (input !== null) {
+          if (key.name === 'escape') { input = null; message = 'Ajout annulé.'; }
+          else if (key.name === 'backspace') input = Array.from(input).slice(0, -1).join('');
+          else if (key.name === 'return') {
+            try {
+              const domain = normalizeSite(input);
+              if (sites.has(domain)) message = `${domain} est déjà dans votre sélection.`;
+              else { sites.add(domain); message = `${domain} ajouté · ce domaine exact sera bloqué.`; }
+              input = null;
+            } catch (error) { message = error.message; }
+          } else if (!key.ctrl && !key.meta && text.length) input += text;
+          render();
+          return;
+        }
         if (pending) {
           if (key.name === 'escape' || text === 'n') { pending = null; render(); return; }
           if (text !== 'o' && key.name !== 'return') return;
           const action = pending; pending = null; busy = true; render();
           try {
-            if (action.startsWith('Bloquer')) await hosts.block([...selected]);
-            else if (action.startsWith('Débloquer')) await hosts.unblock();
+            if (action.type === 'block') await hosts.block([...selected], [...sites]);
+            else if (action.type === 'unblock') await hosts.unblock();
             else await hosts.repairPermissions();
             state = await hosts.status();
-            message = 'Opération terminée. Sauvegarde conservée.';
+            selected = new Set(state.ids); sites = new Set(state.customDomains);
+            message = 'Configuration enregistrée · sauvegarde conservée.';
             await verify();
           } catch (error) { message = friendlyError(error); }
           finally { busy = false; render(); }
           return;
         }
-        if (key.name === 'up') cursor = (cursor + services.length - 1) % services.length;
-        if (key.name === 'down') cursor = (cursor + 1) % services.length;
-        if (state.active && (text === ' ' || text === 'a')) message = 'Une session est active. Appuyez sur U pour débloquer avant de modifier la sélection.';
-        if (text === ' ' && !state.active) { const id = services[cursor].id; selected.has(id) ? selected.delete(id) : selected.add(id); }
-        if (text === 'a' && !state.active) selected = new Set(selected.size === services.length ? [] : services.map(s => s.id));
-        if (text === 'b' || key.name === 'return') {
-          if (state.active) message = 'Débloquez avec U avant de changer les réseaux.';
-          else if (!selected.size) message = 'Sélectionnez au moins un réseau avec espace.';
-          else pending = 'Bloquer ' + selected.size + ' réseaux et rendre hosts lisible localement ?';
+        if (text === 'q') return quit();
+        const items = rows();
+        if (key.name === 'up') cursor = (cursor + items.length - 1) % items.length;
+        if (key.name === 'down') cursor = (cursor + 1) % items.length;
+        if (key.name === 'backspace' && !state.active) {
+          const item = items[cursor];
+          if (item?.type === 'site') { sites.delete(item.id); message = `${item.id} retiré de la sélection.`; }
         }
-        if (text === 'u') pending = 'Débloquer les réseaux et arrêter la session ?';
-        if (text === 'r') pending = 'Rendre hosts lisible par tous les utilisateurs locaux ?';
-        if (text === 'd') details = !details;
-        if (text === 'v') {
+        const item = items[cursor];
+        if (state.active && (text === ' ' || text === 'a' || text === 'i')) message = 'Débloquez la session avec U avant de modifier les sites.';
+        else if (text === ' ' && item?.type === 'service') selected.has(item.id) ? selected.delete(item.id) : selected.add(item.id);
+        else if (text === ' ' && item?.type === 'site') sites.delete(item.id);
+        if (text === 'i' && !state.active || key.name === 'return' && item?.type === 'add') input = '';
+        else if (text === 'a' && !state.active) selected = new Set(selected.size === services.length ? [] : services.map(service => service.id));
+        else if (text === 'b' || key.name === 'return' && item?.type !== 'add') {
+          if (state.active) message = 'Débloquez la session avant de changer la sélection.';
+          else if (!selected.size && !sites.size) message = 'Cochez un site ou ajoutez une URL avant de continuer.';
+          else {
+            const parts = [];
+            if (selected.size) parts.push(`${selected.size} réseau${selected.size > 1 ? 'x' : ''}`);
+            if (sites.size) parts.push(`${sites.size} site${sites.size > 1 ? 's' : ''} personnalisé${sites.size > 1 ? 's' : ''}`);
+            pending = { type: 'block', label: `Bloquer ${parts.join(' et ')} ?` };
+          }
+        } else if (text === 'u') pending = { type: 'unblock', label: 'Débloquer les sites et arrêter la session ?' };
+        else if (text === 'r') pending = { type: 'repair', label: 'Rendre hosts lisible par les utilisateurs locaux ?' };
+        else if (text === 'd') details = !details;
+        else if (text === 'v') {
           busy = true; render();
           try { await verify(); } catch (error) { message = friendlyError(error); }
           busy = false;
@@ -148,7 +196,7 @@ export async function interactive(hosts, demo) {
 }
 
 export function friendlyError(error) {
-  if (['EACCES', 'EPERM'].includes(error.code)) return 'Droits insuffisants pour accéder à hosts ou à ses sauvegardes. Relancez la même commande avec sudo. Le mode --demo fonctionne sans sudo.';
-  if (error.code === 'EBUSY') return 'hosts est monté ou verrouillé par le système. Remplacement atomique impossible ; aucune réécriture en place ne sera tentée.';
+  if (['EACCES', 'EPERM'].includes(error.code)) return 'Droits insuffisants pour accéder à hosts ou à ses sauvegardes. Autorisez la demande système puis réessayez.';
+  if (error.code === 'EBUSY') return 'hosts est monté ou verrouillé. Aucune réécriture en place ne sera tentée.';
   return error.message;
 }
