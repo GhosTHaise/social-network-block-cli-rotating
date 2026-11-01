@@ -19,7 +19,7 @@ Mettez Facebook, Instagram, YouTube et d’autres distractions en pause, directe
 
 ## Sillage en action
 
-La capture montre le tableau de bord. Le GIF déroule le choix et la confirmation en mode démo, sans modifier votre réseau.
+La capture montre le tableau de bord. Le GIF présente le parcours de sélection et de confirmation en mode démo, sans modifier votre réseau.
 
 <div align="center">
 
@@ -36,16 +36,17 @@ La capture montre le tableau de bord. Le GIF déroule le choix et la confirmatio
 ```text
   S I L L A G E   /   FOCUS
   ─────────────────────────────────────────────
-  SESSION ACTIVE · résolution vérifiée
+  ○ PRÊT À BLOQUER · 3 sélectionnés
 
-  RÉSEAUX À BLOQUER
-  › [x] Facebook
-    [x] Instagram
-    [x] YouTube
-    [ ] TikTok
-    [ ] Reddit
+  SITES À BLOQUER
+  › ✓ Facebook · inclus
+    ✓ Instagram · inclus
+    ✓ YouTube · inclus
+    ○ TikTok
+    ○ Reddit
+    + Ajouter un site…
 
-  ↑↓ naviguer  ·  espace choisir  ·  Entrée bloquer
+  ↑↓ choisir · Espace cocher · Entrée / B bloquer · I ajouter une URL
 ```
 
 ## Commencer
@@ -57,7 +58,7 @@ npm ci
 npm start
 ```
 
-Choisissez les réseaux, appuyez sur **Entrée**, puis confirmez. Sillage demande l’autorisation système nécessaire à la modification de `/etc/hosts` : fenêtre système sous Linux graphique, mot de passe dans le terminal sans interface graphique ou sous macOS.
+Choisissez les sites avec les flèches et **Espace**, ajoutez une URL avec **I** ou la ligne « Ajouter un site… », puis appuyez sur **Entrée** et confirmez. Sillage demande l’autorisation système nécessaire à la modification de `/etc/hosts` : fenêtre système sous Linux graphique, mot de passe dans le terminal sans interface graphique ou sous macOS.
 
 Pour essayer sans toucher aux réglages réseau :
 
@@ -75,12 +76,15 @@ La démo utilise un `hosts` temporaire. Elle montre l’interface sans bloquer l
 | `npm run demo` | Découvrir l’interface sans blocage réel |
 | `sudo "$(command -v node)" bin/sillage.js block` | Bloquer Facebook, Instagram et YouTube |
 | `sudo "$(command -v node)" bin/sillage.js block reddit tiktok` | Bloquer une sélection précise |
+| `sudo "$(command -v node)" bin/sillage.js block --url https://example.com/page` | Bloquer le domaine de cette URL |
+| `sudo "$(command -v node)" bin/sillage.js block facebook --url example.com` | Combiner le catalogue et un domaine personnalisé |
+| `sudo "$(command -v node)" bin/sillage.js block --url one.example --url two.example` | Bloquer plusieurs domaines personnalisés |
 | `sudo "$(command -v node)" bin/sillage.js block --all` | Bloquer les 12 services du catalogue |
 | `sudo "$(command -v node)" bin/sillage.js status` | Voir les marqueurs enregistrés dans `hosts` |
 | `sudo "$(command -v node)" bin/sillage.js unblock` | Retirer le bloc Sillage et rétablir les permissions initiales |
 | `node bin/sillage.js list` | Parcourir le catalogue |
 
-Le catalogue comprend Facebook, Instagram, YouTube, TikTok, X, Reddit, Twitch, Snapchat, Threads, Pinterest, LinkedIn et Discord. Facebook, Instagram et YouTube sont présélectionnés.
+Le catalogue comprend Facebook, Instagram, YouTube, TikTok, X, Reddit, Twitch, Snapchat, Threads, Pinterest, LinkedIn et Discord. Facebook, Instagram et YouTube sont présélectionnés. Une URL personnalisée est aussi acceptée ; son chemin et ses paramètres sont ignorés, seul son nom d’hôte est enregistré. Par exemple, `https://example.com/video?id=1` bloque `example.com`.
 
 ## Piloter au clavier
 
@@ -88,15 +92,18 @@ Le catalogue comprend Facebook, Instagram, YouTube, TikTok, X, Reddit, Twitch, S
 | --- | --- |
 | `↑` / `↓` | Se déplacer dans la liste |
 | `Espace` | Cocher ou décocher un réseau |
-| `A` | Tout sélectionner ou tout désélectionner |
-| `Entrée` | Lancer le blocage de la sélection |
+| `A` | Sélectionner ou vider le catalogue prédéfini |
+| `I` | Saisir une URL personnalisée |
+| `Entrée` | Ajouter le site sélectionné ou lancer le blocage |
+| `Retour arrière` | Retirer un domaine personnalisé de la sélection |
+| `B` | Lancer le blocage de la sélection |
 | `O` | Confirmer l’action proposée |
 | `U` | Débloquer et terminer la session |
 | `V` | Vérifier la résolution système des domaines sélectionnés |
 | `D` | Afficher le chemin du fichier et des sauvegardes |
 | `Q` / `Ctrl+C` | Quitter |
 
-Les touches ne changent pas les réglages sans confirmation. Quitter laisse une session de blocage active.
+Les touches ne changent pas les réglages sans confirmation. Quitter laisse une session de blocage active. Une URL personnalisée bloque son nom d’hôte exact : les sous-domaines, autres domaines régionaux et chemins d’URL restent distincts.
 
 ## Ce que Sillage change
 
