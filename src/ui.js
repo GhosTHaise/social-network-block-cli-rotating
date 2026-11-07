@@ -82,7 +82,7 @@ export async function interactive(hosts, demo) {
   }
 
   async function verify() {
-    if (!state.active) { diagnostic = 'Aucun bloc actif · choisissez un site et appuyez sur Entrée.'; return; }
+    if (!state.active) { diagnostic = 'Aucun bloc actif · relancez le navigateur si un site reste bloqué.'; return; }
     if (demo) { diagnostic = 'Mode démo · aucune résolution système modifiée.'; return; }
     const mode = (await fs.stat(hosts.file)).mode & 0o777;
     if ((mode & 0o444) !== 0o444) {
@@ -140,12 +140,13 @@ export async function interactive(hosts, demo) {
           if (text !== 'o' && key.name !== 'return') return;
           const action = pending; pending = null; busy = true; render();
           try {
+            let result;
             if (action.type === 'block') await hosts.block([...selected], [...sites]);
-            else if (action.type === 'unblock') await hosts.unblock();
+            else if (action.type === 'unblock') result = await hosts.unblock();
             else await hosts.repairPermissions();
             state = await hosts.status();
             selected = new Set(state.ids); sites = new Set(state.customDomains);
-            message = 'Configuration enregistrée · sauvegarde conservée.';
+            message = result?.dnsMessage || 'Configuration enregistrée · sauvegarde conservée.';
             await verify();
           } catch (error) { message = friendlyError(error); }
           finally { busy = false; render(); }

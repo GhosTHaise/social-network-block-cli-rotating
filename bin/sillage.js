@@ -81,9 +81,10 @@ async function main() {
     : await hosts.unblock();
   console.log(command === 'block'
     ? `  ● ${result.ids.length} services · ${result.customDomains.length} sites personnalisés · ${result.domains} domaines bloqués (IPv4 + IPv6).`
-    : result.changed ? '  ○ Bloc Sillage retiré. Autres entrées conservées.' : '  ○ Aucun bloc à retirer. Journal vérifié.');
+    : result.changed ? '  ○ Bloc Sillage retiré. Autres entrées conservées. hosts lisible.' : '  ○ Aucun bloc à retirer. Journal vérifié, hosts lisible.');
   if (result.backup) console.log(`  Sauvegarde : ${result.backup}`);
-  console.log('  Les caches et connexions existantes peuvent retarder l’effet.');
+  if (result.dnsMessage) console.log(`  ${result.dnsMessage}`);
+  console.log('  Les caches et connexions existantes peuvent retarder l’effet. Fermez complètement le navigateur puis rouvrez-le.');
 }
 
 main().catch(error => {

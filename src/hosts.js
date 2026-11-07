@@ -5,6 +5,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { normalizeSite, selectServices } from './catalog.js';
+import { refreshDns } from './dns.js';
 
 const exec = promisify(execFile);
 const marker = '# sillage:';
@@ -19,6 +20,11 @@ async function optional(file) {
 async function syncDir(dir) {
   const handle = await fs.open(dir, 'r');
   try { await handle.sync(); } finally { await handle.close(); }
+}
+
+async function ensureReadable(file) {
+  const mode = (await fs.stat(file)).mode & 0o777;
+  if ((mode & 0o444) !== 0o444) await fs.chmod(file, mode | 0o444);
 }
 
 async function saveNew(file, data) {
@@ -148,11 +154,13 @@ export class Hosts {
 
   async unblock() {
     return this.locked(async () => {
+      const finish = async result => ({ ...result, dnsMessage: await refreshDns(this.file) });
       const before = await fs.readFile(this.file);
       const raw = await optional(this.journal);
       if (!raw) {
         if (before.includes(Buffer.from(marker))) throw conflict();
-        return { changed: false };
+        await ensureReadable(this.file);
+        return finish({ changed: false });
       }
       let state;
       try { state = JSON.parse(raw); } catch { throw conflict(); }
@@ -166,19 +174,19 @@ export class Hosts {
       if (start === -1) {
         // Journal écrit avant hosts, ou déblocage terminé avant son nettoyage.
         if (before.includes(Buffer.from(marker))) throw conflict();
+        await ensureReadable(this.file);
         await fs.unlink(this.journal);
         await syncDir(this.dir);
-        return { changed: false, recovered: true, backup: state.backup };
+        return finish({ changed: false, recovered: true, backup: state.backup });
       }
       const after = Buffer.concat([before.subarray(0, start), before.subarray(start + block.length)]);
       if (after.includes(Buffer.from(marker))) throw conflict();
       const currentMode = (await fs.stat(this.file)).mode & 0o777;
-      const restoreMode = Number.isInteger(state.originalMode) && currentMode === state.readableMode
-        ? state.originalMode : undefined;
-      await replace(this.file, before, after, restoreMode);
+      // Le résolveur doit pouvoir relire hosts après le retrait des règles.
+      await replace(this.file, before, after, currentMode | 0o444);
       await fs.unlink(this.journal);
       await syncDir(this.dir);
-      return { changed: true, backup: state.backup };
+      return finish({ changed: true, backup: state.backup });
     });
   }
 }

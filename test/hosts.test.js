@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { Hosts } from '../src/hosts.js';
+import { services } from '../src/catalog.js';
 
 async function fixture(t, original = Buffer.from('127.0.0.1 localhost\n')) {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'sillage-test-'));
@@ -15,7 +16,7 @@ async function fixture(t, original = Buffer.from('127.0.0.1 localhost\n')) {
   return { hosts: new Hosts(file), file, dir, original };
 }
 
-test('restaure les octets et permissions initiaux pour chaque format', async t => {
+test('restaure les octets et conserve la lecture pour chaque format', async t => {
   for (const original of [Buffer.alloc(0), Buffer.from('127.0.0.1 localhost'), Buffer.from('# personnel\r\n127.0.0.1 localhost\r\n'), Buffer.from([0xef, 0xbb, 0xbf, 0x23, 0xff, 10])]) {
     const { hosts, file } = await fixture(t, original);
     const result = await hosts.block(['facebook', 'youtube']);
@@ -26,7 +27,7 @@ test('restaure les octets et permissions initiaux pour chaque format', async t =
     assert.deepEqual(await fs.readFile(result.backup), original);
     await hosts.unblock();
     assert.deepEqual(await fs.readFile(file), original);
-    assert.equal((await fs.stat(file)).mode & 0o777, 0o640);
+    assert.equal((await fs.stat(file)).mode & 0o777, 0o644);
     assert.deepEqual(await fs.readFile(result.backup), original);
     assert.equal((await hosts.status()).active, false);
   }
@@ -143,14 +144,14 @@ test('le CLI valide les arguments et effectue le cycle complet sur --hosts', asy
     assert.deepEqual(await fs.readFile(file), original);
   }
   assert.equal(run('block').status, 0);
-  assert.match(run('status').stdout, /CONCENTRATION/);
+  assert.match(run('status').stdout, /SESSION ACTIVE/);
   assert.equal(run('unblock').status, 0);
   assert.deepEqual(await fs.readFile(file), original);
   assert.equal(run().status, 1);
 });
 
-test('réparation de lecture réversible, sans écraser un changement externe de permissions', async t => {
-  for (const externalMode of [null, 0o640]) {
+test('conserve la lecture et les droits d’écriture externes au déblocage', async t => {
+  for (const externalMode of [null, 0o660]) {
     const { hosts, file, original } = await fixture(t);
     await fs.chmod(file, 0o600);
     await hosts.block(['facebook']);
@@ -158,7 +159,7 @@ test('réparation de lecture réversible, sans écraser un changement externe de
     assert.equal((await fs.stat(file)).mode & 0o777, 0o644);
     if (externalMode) await fs.chmod(file, externalMode);
     await hosts.unblock();
-    assert.equal((await fs.stat(file)).mode & 0o777, externalMode || 0o600);
+    assert.equal((await fs.stat(file)).mode & 0o777, externalMode ? 0o664 : 0o644);
     assert.deepEqual(await fs.readFile(file), original);
   }
 });
@@ -171,7 +172,33 @@ test('bloquer, débloquer et rebloquer rétablit la lecture à chaque activation
     assert.equal((await fs.stat(file)).mode & 0o777, 0o644);
     assert.equal((await hosts.status()).active, true);
     await hosts.unblock();
-    assert.equal((await fs.stat(file)).mode & 0o777, 0o600);
+    assert.equal((await fs.stat(file)).mode & 0o777, 0o644);
+    assert.deepEqual(await fs.readFile(file), original);
+  }
+});
+
+test('chaque service et domaine personnalisé se débloque en gardant hosts lisible', async t => {
+  for (const id of [...services.map(service => service.id), null]) {
+    const { hosts, file, original } = await fixture(t);
+    await fs.chmod(file, 0o600);
+    await hosts.block(id ? [id] : [], id ? [] : ['https://custom.example/video']);
+    await hosts.unblock();
+    assert.deepEqual(await fs.readFile(file), original, id || 'domaine personnalisé');
+    assert.equal((await fs.stat(file)).mode & 0o444, 0o444, id || 'domaine personnalisé');
+    assert.equal((await hosts.status()).active, false);
+  }
+});
+
+test('répare la lecture après un ancien déblocage ou une interruption', async t => {
+  for (const interrupted of [false, true]) {
+    const { hosts, file, original } = await fixture(t);
+    if (interrupted) {
+      await hosts.block(['youtube']);
+      await fs.writeFile(file, original);
+    }
+    await fs.chmod(file, 0o600);
+    await hosts.unblock();
+    assert.equal((await fs.stat(file)).mode & 0o777, 0o644);
     assert.deepEqual(await fs.readFile(file), original);
   }
 });

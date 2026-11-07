@@ -81,7 +81,7 @@ La démo utilise un `hosts` temporaire. Elle montre l’interface sans bloquer l
 | `sudo "$(command -v node)" bin/sillage.js block --url one.example --url two.example` | Bloquer plusieurs domaines personnalisés |
 | `sudo "$(command -v node)" bin/sillage.js block --all` | Bloquer les 12 services du catalogue |
 | `sudo "$(command -v node)" bin/sillage.js status` | Voir les marqueurs enregistrés dans `hosts` |
-| `sudo "$(command -v node)" bin/sillage.js unblock` | Retirer le bloc Sillage et rétablir les permissions initiales |
+| `sudo "$(command -v node)" bin/sillage.js unblock` | Retirer le bloc Sillage et garder `hosts` lisible |
 | `node bin/sillage.js list` | Parcourir le catalogue |
 
 Le catalogue comprend Facebook, Instagram, YouTube, TikTok, X, Reddit, Twitch, Snapchat, Threads, Pinterest, LinkedIn et Discord. Facebook, Instagram et YouTube sont présélectionnés. Une URL personnalisée est aussi acceptée ; son chemin et ses paramètres sont ignorés, seul son nom d’hôte est enregistré. Par exemple, `https://example.com/video?id=1` bloque `example.com`.
@@ -109,9 +109,11 @@ Les touches ne changent pas les réglages sans confirmation. Quitter laisse une 
 
 Sillage ajoute à `hosts` un bloc clairement délimité, qui redirige les domaines sélectionnés vers `0.0.0.0` et `::`. Le blocage couvre ainsi les résolutions IPv4 et IPv6. Une sauvegarde exacte et un journal sont conservés dans `.hosts.sillage`, dans un dossier privé.
 
-Si `hosts` était trop privé pour que le navigateur lise ses règles, l’activation ajoute les permissions de lecture nécessaires aux utilisateurs locaux. **Au déblocage, les permissions d’origine sont restaurées.** Vérifiez les marqueurs avec `V` : « session active » signifie que le bloc existe ; « résolution bloquée » signifie que le résolveur système renvoie les adresses de blocage.
+Si `hosts` était trop privé pour que le navigateur lise ses règles, l’activation ajoute les permissions de lecture nécessaires aux utilisateurs locaux. **Au déblocage, le fichier reste lisible** pour que le résolveur puisse prendre en compte le retrait des règles ; les droits d’écriture sont conservés. Relancer `unblock` répare aussi la lecture après un ancien déblocage, même sans session active. Vérifiez les marqueurs avec `V` : « session active » signifie que le bloc existe ; « résolution bloquée » signifie que le résolveur système renvoie les adresses de blocage.
 
 Le retrait enlève uniquement le bloc Sillage et préserve les autres lignes, y compris celles ajoutées pendant la session. Si le bloc ou sa sauvegarde a été modifié, Sillage s’arrête sans deviner quoi supprimer. Ne restaurez pas toute la sauvegarde à l’aveugle : vous pourriez effacer les modifications d’autres outils.
+
+Le déblocage (`unblock` ou **U** dans le tableau de bord) actualise automatiquement le cache DNS système : `resolvectl` et `nscd` lorsqu’ils sont disponibles sous Linux, `dscacheutil` et `mDNSResponder` sous macOS. Aucune commande de réparation séparée n’est nécessaire. Si l’actualisation échoue ou qu’aucun outil compatible n’est disponible, le CLI le signale ; les règles restent retirées et vous pouvez relancer le déblocage. La démo et les fichiers `hosts` de bac à sable ne déclenchent aucune purge système.
 
 ## Portée honnête
 
@@ -126,7 +128,7 @@ npm test
 npm run check
 ```
 
-Les tests vérifient la restauration exacte du fichier et des permissions, la conservation des changements extérieurs et la récupération des interruptions. Ils utilisent des fichiers temporaires ; ils ne modifient pas `/etc/hosts`.
+Les tests vérifient la restauration exacte du fichier, le maintien des permissions de lecture, la conservation des changements extérieurs et la récupération des interruptions pour les 12 services et les domaines personnalisés. Ils utilisent des fichiers temporaires ; ils ne modifient pas `/etc/hosts`.
 
 <div align="center">
 
