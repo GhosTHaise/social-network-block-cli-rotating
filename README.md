@@ -51,19 +51,19 @@ La capture montre le tableau de bord. Le GIF présente le parcours de sélection
 
 ## Commencer
 
-Depuis un terminal, à la racine du projet :
+Installez Sillage depuis GitHub avec Node.js 22 ou plus récent :
 
 ```bash
-npm ci
-npm start
+npm install -g github:GhosTHaise/social-network-block-cli-rotating
+sillage
 ```
 
-Choisissez les sites avec les flèches et **Espace**, ajoutez une URL avec **I** ou la ligne « Ajouter un site… », puis appuyez sur **Entrée** et confirmez. Sillage demande l’autorisation système nécessaire à la modification de `/etc/hosts` : fenêtre système sous Linux graphique, mot de passe dans le terminal sans interface graphique ou sous macOS.
+La commande `sillage` fonctionne ensuite depuis n’importe quel dossier. Choisissez les sites avec les flèches et **Espace**, ajoutez une URL avec **I** ou la ligne « Ajouter un site… », puis appuyez sur **Entrée** et confirmez. Sillage demande l’autorisation système nécessaire à la modification de `/etc/hosts` : fenêtre système sous Linux graphique, mot de passe dans le terminal sans interface graphique ou sous macOS.
 
 Pour essayer sans toucher aux réglages réseau :
 
 ```bash
-npm run demo
+sillage --demo
 ```
 
 La démo utilise un `hosts` temporaire. Elle montre l’interface sans bloquer les sites.
@@ -72,17 +72,17 @@ La démo utilise un `hosts` temporaire. Elle montre l’interface sans bloquer l
 
 | Commande | Action |
 | --- | --- |
-| `npm start` | Ouvrir le tableau de bord interactif |
-| `npm run demo` | Découvrir l’interface sans blocage réel |
-| `sudo "$(command -v node)" bin/sillage.js block` | Bloquer Facebook, Instagram et YouTube |
-| `sudo "$(command -v node)" bin/sillage.js block reddit tiktok` | Bloquer une sélection précise |
-| `sudo "$(command -v node)" bin/sillage.js block --url https://example.com/page` | Bloquer le domaine de cette URL |
-| `sudo "$(command -v node)" bin/sillage.js block facebook --url example.com` | Combiner le catalogue et un domaine personnalisé |
-| `sudo "$(command -v node)" bin/sillage.js block --url one.example --url two.example` | Bloquer plusieurs domaines personnalisés |
-| `sudo "$(command -v node)" bin/sillage.js block --all` | Bloquer les 12 services du catalogue |
-| `sudo "$(command -v node)" bin/sillage.js status` | Voir les marqueurs enregistrés dans `hosts` |
-| `sudo "$(command -v node)" bin/sillage.js unblock` | Retirer le bloc Sillage et garder `hosts` lisible |
-| `node bin/sillage.js list` | Parcourir le catalogue |
+| `sillage` | Ouvrir le tableau de bord interactif |
+| `sillage --demo` | Découvrir l’interface sans blocage réel |
+| `sillage block` | Bloquer Facebook, Instagram et YouTube |
+| `sillage block reddit tiktok` | Bloquer une sélection précise |
+| `sillage block --url https://example.com/page` | Bloquer le domaine de cette URL |
+| `sillage block facebook --url example.com` | Combiner le catalogue et un domaine personnalisé |
+| `sillage block --url one.example --url two.example` | Bloquer plusieurs domaines personnalisés |
+| `sillage block --all` | Bloquer les 12 services du catalogue |
+| `sillage status` | Voir les marqueurs enregistrés dans `hosts` |
+| `sillage unblock` | Retirer le bloc Sillage et garder `hosts` lisible |
+| `sillage list` | Parcourir le catalogue |
 
 Le catalogue comprend Facebook, Instagram, YouTube, TikTok, X, Reddit, Twitch, Snapchat, Threads, Pinterest, LinkedIn et Discord. Facebook, Instagram et YouTube sont présélectionnés. Une URL personnalisée est aussi acceptée ; son chemin et ses paramètres sont ignorés, seul son nom d’hôte est enregistré. Par exemple, `https://example.com/video?id=1` bloque `example.com`.
 
@@ -124,6 +124,7 @@ Sillage est un outil personnel de concentration, pas un pare-feu ni un contrôle
 ## Développement
 
 ```bash
+npm ci
 npm test
 npm run check
 ```
