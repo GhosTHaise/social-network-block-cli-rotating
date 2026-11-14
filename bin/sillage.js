@@ -42,7 +42,7 @@ async function main() {
     help: { type: 'boolean', short: 'h' }, version: { type: 'boolean', short: 'v' }
   } });
   if (values.help) return console.log(help);
-  if (values.version) return console.log('1.1.0');
+  if (values.version) return console.log('1.1.1');
   const [command, ...ids] = positionals;
   const urls = (values.url || []).map(normalizeSite);
   if (command && !['block', 'unblock', 'status', 'list'].includes(command)) throw new Error('Commande inconnue. Consultez « sillage --help ».');

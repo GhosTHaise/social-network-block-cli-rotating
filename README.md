@@ -19,29 +19,17 @@ Mettez Facebook, Instagram, YouTube et d’autres distractions en pause, directe
 
 ## Sillage en action
 
-La capture montre le tableau de bord. Le GIF présente le parcours de sélection et de confirmation en mode démo, sans modifier votre réseau.
-
-<div align="center">
-
-[![Capture du tableau de bord Sillage en mode démo](assets/sillage-cli.png)](assets/sillage-cli.png)
-
-<br>
-
-<img src="assets/sillage-demo.gif" alt="Démonstration animée : sélection des réseaux, confirmation, puis session de démonstration" width="800">
-
-</div>
-
-<br>
+Le tableau de bord démarre sans site coché. Sélectionnez les sites avec **Espace**, puis confirmez le blocage.
 
 ```text
   S I L L A G E   /   FOCUS
   ─────────────────────────────────────────────
-  ○ PRÊT À BLOQUER · 3 sélectionnés
+  ○ PRÊT À BLOQUER · 0 sélectionné(s)
 
   SITES À BLOQUER
-  › ✓ Facebook · inclus
-    ✓ Instagram · inclus
-    ✓ YouTube · inclus
+  › ○ Facebook
+    ○ Instagram
+    ○ YouTube
     ○ TikTok
     ○ Reddit
     + Ajouter un site…
@@ -59,6 +47,8 @@ sillage
 ```
 
 La commande `sillage` fonctionne ensuite depuis n’importe quel dossier. Choisissez les sites avec les flèches et **Espace**, ajoutez une URL avec **I** ou la ligne « Ajouter un site… », puis appuyez sur **Entrée** et confirmez. Sillage demande l’autorisation système nécessaire à la modification de `/etc/hosts` : fenêtre système sous Linux graphique, mot de passe dans le terminal sans interface graphique ou sous macOS.
+
+Pour recevoir les dernières corrections, relancez la commande d’installation globale.
 
 Pour essayer sans toucher aux réglages réseau :
 
@@ -84,7 +74,7 @@ La démo utilise un `hosts` temporaire. Elle montre l’interface sans bloquer l
 | `sillage unblock` | Retirer le bloc Sillage et garder `hosts` lisible |
 | `sillage list` | Parcourir le catalogue |
 
-Le catalogue comprend Facebook, Instagram, YouTube, TikTok, X, Reddit, Twitch, Snapchat, Threads, Pinterest, LinkedIn et Discord. Facebook, Instagram et YouTube sont présélectionnés. Une URL personnalisée est aussi acceptée ; son chemin et ses paramètres sont ignorés, seul son nom d’hôte est enregistré. Par exemple, `https://example.com/video?id=1` bloque `example.com`.
+Le catalogue comprend Facebook, Instagram, YouTube, TikTok, X, Reddit, Twitch, Snapchat, Threads, Pinterest, LinkedIn et Discord. Dans l’interface, aucun site n’est coché au départ : choisissez exactement ceux à bloquer. La commande `sillage block` sans argument bloque Facebook, Instagram et YouTube. Une URL personnalisée est aussi acceptée ; son chemin et ses paramètres sont ignorés, seul son nom d’hôte est enregistré. Par exemple, `https://example.com/video?id=1` bloque `example.com`.
 
 ## Piloter au clavier
 
@@ -98,7 +88,7 @@ Le catalogue comprend Facebook, Instagram, YouTube, TikTok, X, Reddit, Twitch, S
 | `Retour arrière` | Retirer un domaine personnalisé de la sélection |
 | `B` | Lancer le blocage de la sélection |
 | `O` | Confirmer l’action proposée |
-| `U` | Débloquer et terminer la session |
+| `U` | Demander le déblocage d’une session active (confirmer avec `O` ou `Entrée`) |
 | `V` | Vérifier la résolution système des domaines sélectionnés |
 | `D` | Afficher le chemin du fichier et des sauvegardes |
 | `Q` / `Ctrl+C` | Quitter |
