@@ -55,7 +55,7 @@ sillage
 
 La commande `sillage` fonctionne ensuite depuis n’importe quel dossier. Choisissez les sites avec les flèches et **Espace**, ajoutez une URL avec **I** ou la ligne « Ajouter un site… », puis appuyez sur **Entrée** et confirmez. Sillage demande l’autorisation système nécessaire à la modification de `/etc/hosts` : fenêtre système sous Linux graphique, mot de passe dans le terminal sans interface graphique ou sous macOS.
 
-Pour recevoir les dernières corrections, relancez la commande d’installation globale.
+Pour recevoir les dernières corrections, relancez la commande `curl` ou `npm install -g` ci-dessus. Vérifiez la version installée avec `sillage --version`.
 
 Pour essayer sans toucher aux réglages réseau :
 
