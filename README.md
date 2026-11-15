@@ -39,7 +39,14 @@ Le tableau de bord démarre sans site coché. Sélectionnez les sites avec **Esp
 
 ## Commencer
 
-Installez Sillage depuis GitHub avec Node.js 22 ou plus récent :
+Avec Node.js 22 ou plus récent, npm et Git installés, lancez :
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/GhosTHaise/social-network-block-cli-rotating/main/install.sh | sh
+sillage
+```
+
+Installation directe avec npm, si vous préférez :
 
 ```bash
 npm install -g github:GhosTHaise/social-network-block-cli-rotating
